@@ -1,0 +1,55 @@
+services:
+  drupal:
+    image: drupal:10-apache
+    ports:
+      - 8080:80
+    volumes:
+      - /var/www/html/modules
+      - /var/www/html/profiles
+      - /var/www/html/themes
+      # this takes advantage of the feature in Docker that a new anonymous
+      # volume (which is what we're creating here) will be initialized with the
+      # existing content of the image at the same location
+      - /var/www/html/sites
+    restart: always
+
+  redis:
+    image: redis:7.0.7
+    container_name: ultri-ecomm-redis
+    hostname: "redis"
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - ultri-ecomm-net
+    # command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    command: redis-server --save 20 1 --loglevel warning
+    volumes:
+      - redis:/data
+
+  postgres:
+    container_name: ultri-ecomm-postgres
+    hostname: "postgres"
+    image: "postgres:14"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    ports:
+      - "5432:5432"
+    restart: always
+    env_file: .env
+    networks:
+      - ultri-ecomm-net
+    volumes:
+      - postgres-db:/var/lib/postgres/data
+      - ./postgres:/docker-entrypoint-initdb.d/
+volumes:
+  postgres-db: {}
+  redis: {}
+
+networks:
+  ultri-ecomm-net:
+    external: false
+    driver: bridge
